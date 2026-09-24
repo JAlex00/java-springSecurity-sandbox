@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import static com.alex.springSecurity.security.ApplicationUserPermission.*;
 import static com.alex.springSecurity.security.ApplicationUserRole.*;
@@ -33,7 +34,7 @@ public class ApplicationSecurityConfig {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /** Configurazione
+    /** Configurazione Basic Authentication
      * Qualsiasi Client che chiami un'API (anyRequest),
      * dovra' autenticarsi (authenticated)
      * tramite Basic Authentication (httpBasic)
@@ -43,15 +44,22 @@ public class ApplicationSecurityConfig {
      * (vedi esempio con Postman)
      * ---
      * N.B. CSRF (Cross-Site Request Forgery)
-     * Quando il CSRF è attivo, Spring Security blocca i metodi "Unsafe"
-     * (POST, PUT, DELETE), che modificano lo stato
-     * a meno che la richiesta non includa un CSRF TOKEN valido.
+     * Quando il CSRF è attivo, Spring Security non autorizza le Request del client
+     * a metodi "Unsafe"(POST, PUT, DELETE), che modificano lo stato,
+     * a meno che la Request non includa un CSRF TOKEN valido (header X-XSRF-TOKEN).
      * Metodi "Safe", come GET, possono essere richiamati
+     * (Questo viene fatto per evitare attacchi web tramite Link).
+     *
+     * N.B. Il CSRF va utilizzato solo per le Request provenienti dal Frontend
+     * Per Request dirette alle API, conviene disabilitare il CSRF
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http.csrf(AbstractHttpConfigurer::disable) // Disabilito il CSRF
+        // Solo Riga 61: Generazione del CSRF. withHttpOnlyFalse() indica che il token sara' invisibile nei cookie
+        http
+                //.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf(AbstractHttpConfigurer::disable) // Disabilito il CSRF
                 .authorizeHttpRequests(auth -> auth
                 //.requestMatchers("/", "/css/*", "/js/*").permitAll() -- No Auth per risorse indicate
                 .requestMatchers("/api/**").hasRole(STUDENT.name()) // Solo utenti con RUOLO "STUDENT" chiamano le API indicate
