@@ -1,13 +1,17 @@
 package com.alex.springSecurity.security;
 
+import com.alex.springSecurity.jwt.JwtUsernameAndPasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -34,14 +38,17 @@ public class ApplicationSecurityConfig {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /** Configurazione Basic Authentication
+    // Nuova versione - da passare a JwtUsernameAndPasswordAuthenticationFilter()
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    /** Configurazione Authentication
      * Qualsiasi Client che chiami un'API (anyRequest),
      * dovra' autenticarsi (authenticated)
      * tramite Basic Authentication (httpBasic)
-     * ---
-     * N.B. user=user; psw=[viene loggata in console]
-     * Una volta inseriti, user e password verranno passati ad ogni richiesta in formato base64
-     * (vedi esempio con Postman)
+     * OPPURE JWT Token
      * ---
      * N.B. CSRF (Cross-Site Request Forgery)
      * Quando il CSRF è attivo, Spring Security non autorizza le Request del client
@@ -54,18 +61,23 @@ public class ApplicationSecurityConfig {
      * Per Request dirette alle API, conviene disabilitare il CSRF
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
 
-        // Solo Riga 61: Generazione del CSRF. withHttpOnlyFalse() indica che il token sara' invisibile nei cookie
+        // Solo Riga 58: Generazione del CSRF. withHttpOnlyFalse() indica che il token sara' invisibile nei cookie
         http
                 //.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .csrf(AbstractHttpConfigurer::disable) // Disabilito il CSRF
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // JWT Stateless
+                .addFilter(new JwtUsernameAndPasswordAuthenticationFilter(authManager)) // Utilizzo del JWT Token
                 .authorizeHttpRequests(auth -> auth
-                //.requestMatchers("/", "/css/*", "/js/*").permitAll() -- No Auth per risorse indicate
-                .requestMatchers("/api/**").hasRole(STUDENT.name()) // Solo utenti con RUOLO "STUDENT" chiamano le API indicate
-                .requestMatchers(HttpMethod.POST, "/management/api/**").hasAnyAuthority(STUDENT_WRITE.getPermission()) // Solo utenti con PERMISSION "STUDENT_WRITE" chiamano le API indicate
-                .anyRequest().authenticated()
-        ).httpBasic(withDefaults());
+                        //.requestMatchers("/", "/css/*", "/js/*").permitAll() -- No Auth per risorse indicate
+                        .requestMatchers("/api/**").hasRole(STUDENT.name()) // Solo utenti con RUOLO "STUDENT" chiamano le API indicate
+                        .requestMatchers(HttpMethod.POST, "/management/api/**").hasAnyAuthority(STUDENT_WRITE.getPermission()) // Solo utenti con PERMISSION "STUDENT_WRITE" chiamano le API indicate
+                        .anyRequest().authenticated()
+                );
+                //.httpBasic(withDefaults()); -- Non serce se si usa il JWT Token
+
         return http.build();
     }
 

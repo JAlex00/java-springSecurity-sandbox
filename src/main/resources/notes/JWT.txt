@@ -1,0 +1,27 @@
+Un Token JWT viene utilizzato per permettere a piu' Client, che utilizzano diversi metodi di autenticazione,
+di accedere alla propria applicazione.
+
+Il vantaggio di un Token JWT e' che e' Stateless: tutte le informazioni, relative all'utenza,
+vengono codificate all'interno del Token.
+
+Header
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+Paylod
+{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "admin": true,
+  "iat": 1516239022
+}
+
+Signature
+a-string-secret-at-least-256-bits-long
+
+Diventa --> eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30
+
+Lo svantaggio e' che un Token JWT non da' possibilita' di vedere quali utenze effettuano la log-in (a meno che non vengano implementate librerie aggiuntive),
+ma il problema piu' grande e' che, qualora il Token venisse esposto, si diventerebbe vulnerabili ad attacchi.
